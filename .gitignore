@@ -1,0 +1,20 @@
+# 영상 데이터
+*.mp4
+
+# 모델 가중치
+*.pt
+
+# 결과/업로드 디렉토리
+results/
+uploads/
+api_results/
+frames_sample/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+frame_features.json
+
+# 기타
+.env

@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>흡연 감지 시스템</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #0f1117;
+      color: #e0e0e0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 40px 20px;
+    }
+    h1 {
+      font-size: 1.8rem;
+      margin-bottom: 8px;
+      color: #fff;
+    }
+    .subtitle { color: #888; margin-bottom: 40px; font-size: 0.9rem; }
+
+    .card {
+      background: #1e2130;
+      border-radius: 12px;
+      padding: 32px;
+      width: 100%;
+      max-width: 720px;
+      margin-bottom: 24px;
+    }
+
+    /* 업로드 영역 */
+    .drop-zone {
+      border: 2px dashed #3a3f55;
+      border-radius: 10px;
+      padding: 48px 20px;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color 0.2s, background 0.2s;
+    }
+    .drop-zone:hover, .drop-zone.drag-over {
+      border-color: #5b6af0;
+      background: #252a40;
+    }
+    .drop-zone input { display: none; }
+    .drop-icon { font-size: 2.5rem; margin-bottom: 12px; }
+    .drop-text { color: #aaa; font-size: 0.95rem; }
+    .drop-text span { color: #5b6af0; cursor: pointer; }
+
+    .file-name {
+      margin-top: 14px;
+      font-size: 0.85rem;
+      color: #7c83a8;
+    }
+
+    /* 버튼 */
+    .btn {
+      display: block;
+      width: 100%;
+      padding: 14px;
+      margin-top: 20px;
+      background: #5b6af0;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .btn:hover { background: #4a58e0; }
+    .btn:disabled { background: #3a3f55; cursor: not-allowed; }
+
+    /* 진행 바 */
+    .progress-wrap {
+      margin-top: 20px;
+      display: none;
+    }
+    .progress-bar {
+      height: 6px;
+      background: #2a2f45;
+      border-radius: 3px;
+      overflow: hidden;
+    }
+    .progress-fill {
+      height: 100%;
+      width: 0%;
+      background: #5b6af0;
+      border-radius: 3px;
+      transition: width 0.3s;
+      animation: indeterminate 1.5s infinite;
+    }
+    @keyframes indeterminate {
+      0%   { width: 0%;   margin-left: 0%; }
+      50%  { width: 60%;  margin-left: 20%; }
+      100% { width: 0%;   margin-left: 100%; }
+    }
+    .progress-label {
+      margin-top: 8px;
+      font-size: 0.82rem;
+      color: #7c83a8;
+      text-align: center;
+    }
+
+    /* 결과 */
+    .result-card { display: none; }
+
+    .verdict {
+      text-align: center;
+      padding: 28px;
+      border-radius: 10px;
+      margin-bottom: 24px;
+    }
+    .verdict.smoking {
+      background: rgba(220, 60, 60, 0.15);
+      border: 1px solid rgba(220, 60, 60, 0.4);
+    }
+    .verdict.normal {
+      background: rgba(50, 180, 100, 0.12);
+      border: 1px solid rgba(50, 180, 100, 0.35);
+    }
+    .verdict-icon { font-size: 3rem; margin-bottom: 8px; }
+    .verdict-label {
+      font-size: 1.6rem;
+      font-weight: bold;
+    }
+    .verdict.smoking .verdict-label { color: #ff6060; }
+    .verdict.normal  .verdict-label { color: #4cdb82; }
+    .verdict-sub { font-size: 0.85rem; color: #888; margin-top: 6px; }
+
+    /* 지표 그리드 */
+    .metrics {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 14px;
+      margin-bottom: 24px;
+    }
+    .metric {
+      background: #252a40;
+      border-radius: 8px;
+      padding: 16px;
+      text-align: center;
+    }
+    .metric-val { font-size: 1.4rem; font-weight: bold; color: #fff; }
+    .metric-lbl { font-size: 0.75rem; color: #7c83a8; margin-top: 4px; }
+
+    /* 스냅샷 */
+    .snapshots {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+      margin-bottom: 24px;
+    }
+    .snapshots img {
+      width: 100%;
+      border-radius: 8px;
+      border: 1px solid rgba(220,60,60,0.3);
+    }
+    .snap-title {
+      font-size: 0.85rem;
+      color: #ff8080;
+      margin-bottom: 10px;
+    }
+
+    /* 타임라인 그래프 */
+    .chart-title {
+      font-size: 0.85rem;
+      color: #888;
+      margin-bottom: 10px;
+    }
+    canvas { width: 100%; border-radius: 6px; }
+
+    /* 에러 */
+    .error-box {
+      display: none;
+      background: rgba(220,60,60,0.12);
+      border: 1px solid rgba(220,60,60,0.3);
+      border-radius: 8px;
+      padding: 16px;
+      margin-top: 16px;
+      color: #ff8080;
+      font-size: 0.88rem;
+    }
+  </style>
+</head>
+<body>
+
+<h1>흡연 감지 시스템</h1>
+<p class="subtitle">드론 탑뷰 CCTV 영상 분석 · YOLOv8-Pose 기반</p>
+
+<!-- 업로드 카드 -->
+<div class="card">
+  <div class="drop-zone" id="dropZone">
+    <div class="drop-icon">🎬</div>
+    <div class="drop-text">
+      영상을 드래그하거나 <span onclick="document.getElementById('fileInput').click()">클릭하여 선택</span>
+    </div>
+    <div class="drop-text" style="margin-top:6px; font-size:0.8rem;">mp4 파일 지원</div>
+    <input type="file" id="fileInput" accept=".mp4" />
+  </div>
+  <div class="file-name" id="fileName"></div>
+
+  <button class="btn" id="analyzeBtn" disabled onclick="analyze()">분석 시작</button>
+
+  <div class="progress-wrap" id="progressWrap">
+    <div class="progress-bar"><div class="progress-fill"></div></div>
+    <div class="progress-label">분석 중... (영상 길이에 따라 30초~1분 소요)</div>
+  </div>
+
+  <div class="error-box" id="errorBox"></div>
+</div>
+
+<!-- 결과 카드 -->
+<div class="card result-card" id="resultCard">
+  <div class="verdict" id="verdict">
+    <div class="verdict-icon" id="verdictIcon"></div>
+    <div class="verdict-label" id="verdictLabel"></div>
+    <div class="verdict-sub" id="verdictSub"></div>
+  </div>
+
+  <div class="metrics" id="metrics"></div>
+
+  <div id="snapshotSection" style="display:none">
+    <div class="snap-title">🚬 감지 장면</div>
+    <div class="snapshots" id="snapshots"></div>
+  </div>
+
+  <div class="chart-title">wrist_norm 타임라인 (낮을수록 손이 얼굴 근처)</div>
+  <canvas id="chart" height="120"></canvas>
+</div>
+
+<script>
+  const dropZone   = document.getElementById('dropZone');
+  const fileInput  = document.getElementById('fileInput');
+  const fileName   = document.getElementById('fileName');
+  const analyzeBtn = document.getElementById('analyzeBtn');
+  const progressWrap = document.getElementById('progressWrap');
+  const errorBox   = document.getElementById('errorBox');
+  const resultCard = document.getElementById('resultCard');
+
+  let selectedFile = null;
+
+  // 파일 선택
+  fileInput.addEventListener('change', e => setFile(e.target.files[0]));
+  dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+  dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+  dropZone.addEventListener('drop', e => {
+    e.preventDefault();
+    dropZone.classList.remove('drag-over');
+    setFile(e.dataTransfer.files[0]);
+  });
+
+  function setFile(f) {
+    if (!f || !f.name.toLowerCase().endsWith('.mp4')) {
+      alert('mp4 파일만 지원합니다.');
+      return;
+    }
+    selectedFile = f;
+    fileName.textContent = `선택된 파일: ${f.name}  (${(f.size/1024/1024).toFixed(1)} MB)`;
+    analyzeBtn.disabled = false;
+    resultCard.style.display = 'none';
+    errorBox.style.display   = 'none';
+  }
+
+  async function analyze() {
+    if (!selectedFile) return;
+
+    analyzeBtn.disabled    = true;
+    progressWrap.style.display = 'block';
+    errorBox.style.display     = 'none';
+    resultCard.style.display   = 'none';
+
+    const formData = new FormData();
+    formData.append('file', selectedFile);
+
+    try {
+      const res = await fetch('/analyze', { method: 'POST', body: formData });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.detail || '서버 오류');
+      }
+      const data = await res.json();
+      showResult(data);
+    } catch (e) {
+      errorBox.textContent   = '오류: ' + e.message;
+      errorBox.style.display = 'block';
+    } finally {
+      analyzeBtn.disabled        = false;
+      progressWrap.style.display = 'none';
+    }
+  }
+
+  function showResult(d) {
+    const smoking = d.smoking_detected;
+    const verdict = document.getElementById('verdict');
+    verdict.className = 'verdict ' + (smoking ? 'smoking' : 'normal');
+    document.getElementById('verdictIcon').textContent  = smoking ? '🚬' : '✅';
+    document.getElementById('verdictLabel').textContent = smoking ? '흡연 감지됨' : '정상';
+
+    let sub = `영상: ${d.filename}  ·  ${d.duration}초  ·  ${d.fps}fps`;
+    if (smoking && d.first_detection !== null)
+      sub += `  ·  최초 감지: ${d.first_detection.toFixed(1)}s`;
+    document.getElementById('verdictSub').textContent = sub;
+
+    // 지표
+    document.getElementById('metrics').innerHTML = `
+      <div class="metric">
+        <div class="metric-val">${(d.frac * 100).toFixed(1)}%</div>
+        <div class="metric-lbl">의심 프레임 비율</div>
+      </div>
+      <div class="metric">
+        <div class="metric-val">${d.max_run}</div>
+        <div class="metric-lbl">최장 연속 구간 (프레임)</div>
+      </div>
+      <div class="metric">
+        <div class="metric-val">${d.frame_count}</div>
+        <div class="metric-lbl">분석 프레임 수</div>
+      </div>
+    `;
+
+    // 스냅샷
+    const snapSection = document.getElementById('snapshotSection');
+    const snapGrid    = document.getElementById('snapshots');
+    if (d.snapshots && d.snapshots.length > 0) {
+      snapGrid.innerHTML = d.snapshots.map(src =>
+        `<img src="${src}" />`
+      ).join('');
+      snapSection.style.display = 'block';
+    } else {
+      snapSection.style.display = 'none';
+    }
+
+    // 타임라인 캔버스
+    drawChart(d.timeline);
+
+    resultCard.style.display = 'block';
+  }
+
+  function drawChart(timeline) {
+    const canvas = document.getElementById('chart');
+    const W = canvas.parentElement.clientWidth - 4;
+    canvas.width  = W;
+    canvas.height = 120;
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, W, 120);
+
+    const PAD = { l: 42, r: 10, t: 10, b: 24 };
+    const cW = W - PAD.l - PAD.r;
+    const cH = 120 - PAD.t - PAD.b;
+    const MAX_WN = 3.0;
+
+    // 배경
+    ctx.fillStyle = '#161b2e';
+    ctx.fillRect(0, 0, W, 120);
+
+    if (!timeline || timeline.length === 0) return;
+
+    const tMax = timeline[timeline.length - 1].t || 1;
+
+    function cx(t)  { return PAD.l + (t / tMax) * cW; }
+    function cy(wn) { return PAD.t + cH - Math.min(wn, MAX_WN) / MAX_WN * cH; }
+
+    // 임계선 (1.5)
+    ctx.strokeStyle = 'rgba(255,120,0,0.5)';
+    ctx.setLineDash([4, 3]);
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(PAD.l, cy(1.5)); ctx.lineTo(PAD.l + cW, cy(1.5));
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // 의심 구간 배경
+    ctx.fillStyle = 'rgba(220,60,60,0.18)';
+    timeline.forEach(p => {
+      if (p.suspect) {
+        const x = cx(p.t);
+        ctx.fillRect(x - 2, PAD.t, 5, cH);
+      }
+    });
+
+    // wrist_norm 라인
+    ctx.strokeStyle = '#5b6af0';
+    ctx.lineWidth   = 1.5;
+    ctx.beginPath();
+    timeline.forEach((p, i) => {
+      const x = cx(p.t), y = cy(p.wrist_norm);
+      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    });
+    ctx.stroke();
+
+    // 축 레이블
+    ctx.fillStyle   = '#666';
+    ctx.font        = '10px sans-serif';
+    ctx.textAlign   = 'right';
+    ctx.fillText('3.0', PAD.l - 4, PAD.t + 4);
+    ctx.fillText('1.5', PAD.l - 4, cy(1.5) + 4);
+    ctx.fillText('0',   PAD.l - 4, PAD.t + cH + 4);
+
+    ctx.textAlign = 'center';
+    [0, tMax * 0.25, tMax * 0.5, tMax * 0.75, tMax].forEach(t => {
+      ctx.fillText(t.toFixed(0) + 's', cx(t), 120 - 6);
+    });
+
+    // 범례
+    ctx.fillStyle = 'rgba(255,120,0,0.7)';
+    ctx.fillText('── 임계값(1.5)', PAD.l + cW - 60, PAD.t + 10);
+  }
+</script>
+</body>
+</html>
