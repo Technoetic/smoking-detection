@@ -367,9 +367,6 @@ graph LR
 
 <div align="center">
 
-**드론 CCTV 인프라를 위한 금연구역 자동 모니터링 솔루션**
-
-[![Deploy on Railway](https://railway.com/button.svg)](https://railway.app)
 
 <br/>
 
