@@ -19,6 +19,10 @@ YOLOv8-Pose 키포인트 추적 + 손목 정규화 지표 + 시간적 지속성 
 
 <br/>
 
+[![Live Demo](docs/demo-btn.gif)](https://smoking-api-production.up.railway.app/)
+
+<br/>
+
 <img src="docs/demo.gif" width="90%" alt="흡연 감지 시스템 데모 — 영상 업로드 → 분석 → 결과 및 스냅샷"/>
 
 </div>
