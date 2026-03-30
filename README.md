@@ -371,4 +371,8 @@ graph LR
 
 [![Deploy on Railway](https://railway.com/button.svg)](https://railway.app)
 
+<br/>
+
+<img src="docs/demo-footer.gif" width="90%" alt="footer"/>
+
 </div>
